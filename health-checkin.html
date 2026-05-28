@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Health check-in</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #1D9E75;
+      --green-light: #E1F5EE;
+      --green-dark: #0F6E56;
+      --bg: #f5f5f3;
+      --card: #ffffff;
+      --border: rgba(0,0,0,0.1);
+      --text: #1a1a1a;
+      --text-muted: #6b6b6b;
+      --text-hint: #aaaaaa;
+      --radius: 10px;
+      --radius-sm: 7px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111110;
+        --card: #1e1e1c;
+        --border: rgba(255,255,255,0.1);
+        --text: #f0ede8;
+        --text-muted: #999;
+        --text-hint: #555;
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 40px;
+    }
+
+    /* Header */
+    .header {
+      background: var(--green);
+      padding: 20px 20px 18px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header h1 {
+      font-size: 19px;
+      font-weight: 600;
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header h1 svg { width: 20px; height: 20px; fill: white; flex-shrink: 0; }
+    .header-date {
+      font-size: 13px;
+      color: rgba(255,255,255,0.8);
+      margin-top: 2px;
+    }
+
+    /* Sections */
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 18px 20px 8px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      margin: 0 12px;
+      overflow: hidden;
+      border: 0.5px solid var(--border);
+    }
+
+    .field {
+      padding: 13px 16px;
+      border-bottom: 0.5px solid var(--border);
+    }
+    .field:last-child { border-bottom: none; }
+
+    .field-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 7px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .field-label svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+    .badge {
+      font-size: 10px;
+      font-weight: 500;
+      background: #FEF3C7;
+      color: #92400E;
+      border-radius: 20px;
+      padding: 2px 7px;
+      margin-left: 3px;
+    }
+    @media (prefers-color-scheme: dark) {
+      .badge { background: #451a03; color: #fcd34d; }
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    select,
+    textarea {
+      width: 100%;
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--text);
+      background: transparent;
+      border: none;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    input::placeholder, textarea::placeholder { color: var(--text-hint); }
+    textarea { resize: none; line-height: 1.5; min-height: 72px; }
+
+    select {
+      background: var(--bg);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 9px 12px;
+      font-size: 15px;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    /* Energy buttons */
+    .energy-grid {
+      display: flex;
+      gap: 5px;
+    }
+    .energy-btn {
+      flex: 1;
+      height: 34px;
+      border-radius: 6px;
+      border: 0.5px solid var(--border);
+      background: var(--bg);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .energy-btn:active { transform: scale(0.95); }
+    .energy-btn.selected {
+      background: var(--green);
+      border-color: var(--green);
+      color: white;
+      font-weight: 600;
+    }
+
+    /* Disabled field */
+    .field.disabled { opacity: 0.38; pointer-events: none; }
+    .field.disabled .field-label::after {
+      content: '— alleen dinsdag';
+      font-size: 11px;
+      color: var(--text-hint);
+      margin-left: 4px;
+      font-style: italic;
+    }
+
+    /* Save button */
+    .save-wrap {
+      padding: 20px 12px 8px;
+    }
+    .save-btn {
+      width: 100%;
+      height: 50px;
+      border-radius: var(--radius);
+      background: var(--green);
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.15s;
+      font-family: inherit;
+    }
+    .save-btn:active { background: var(--green-dark); transform: scale(0.98); }
+    .save-btn svg { width: 18px; height: 18px; stroke: white; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--green-dark);
+      color: white;
+      padding: 11px 22px;
+      border-radius: 30px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: transform 0.3s ease;
+      z-index: 100;
+      white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* History section */
+    .history-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .history-toggle svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.2s; }
+    .history-toggle.open svg { transform: rotate(180deg); }
+
+    .history-list { display: none; }
+    .history-list.open { display: block; }
+
+    .history-item {
+      background: var(--card);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      margin: 0 12px 10px;
+      padding: 13px 16px;
+    }
+    .history-item-date {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--green);
+      margin-bottom: 6px;
+    }
+    .history-item-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      padding: 2px 0;
+      color: var(--text);
+      gap: 8px;
+    }
+    .history-item-key { color: var(--text-muted); flex-shrink: 0; }
+    .history-item-val { text-align: right; }
+    .history-item-del {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #cc3333;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      padding: 0;
+    }
+
+    /* Spacer at top to push first section down nicely */
+    .spacer-top { height: 6px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+    Dagelijkse check-in
+  </h1>
+  <div class="header-date" id="header-date"></div>
+</div>
+
+<div class="spacer-top"></div>
+
+<div class="section-label">Dag</div>
+<div class="card">
+  <div class="field">
+    <div class="field-label">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Datum
+    </div>
+    <input type="date" id="field-date">
+  </div>
+</div>
+
+<div class="section-label">Energie &amp; herstel</div>
+<div class="card">
+  <div class="field">
+    <div class="field-label">
+      <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      Energielevel
+    </div>
+    <div class="energy-grid" id="energy-grid">
+      <button class="energy-btn" data-val="1">1</button>
+      <button class="energy-btn" data-val="2">2</button>
+      <button class="energy-btn" data-val="3">3</button>
+      <button class="energy-btn" data-val="4">4</button>
+      <button class="energy-btn" data-val="5">5</button>
+      <button class="energy-btn" data-val="6">6</button>
+      <button class="energy-btn" data-val="7">7</button>
+      <button class="energy-btn" data-val="8">8</button>
+      <button class="energy-btn" data-val="9">9</button>
+      <button class="energy-btn" data-val="10">10</button>
+    </div>
+  </div>
+  <div class="field">
+    <div class="field-label">
+      <svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+      Uren slaap
+    </div>
+    <input type="number" id="field-sleep" placeholder="bijv. 7.5" step="0.5" min="0" max="24">
+  </div>
+  <div class="field" id="weight-field">
+    <div class="field-label">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="3"/><path d="M6.5 8a2 2 0 0 0-1.905 1.38L2 17h20l-2.595-7.62A2 2 0 0 0 17.5 8z"/><line x1="2" y1="17" x2="22" y2="17"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Gewicht (kg)
+      <span class="badge">alleen dinsdag</span>
+    </div>
+    <input type="number" id="field-weight" placeholder="bijv. 63.4" step="0.1" min="0">
+  </div>
+</div>
+
+<div class="section-label">Beweging</div>
+<div class="card">
+  <div class="field">
+    <div class="field-label">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><path d="m9 20 3-8 3 8"/><path d="m6 8 6 2 6-2"/></svg>
+      Aantal stappen
+    </div>
+    <input type="number" id="field-steps" placeholder="bijv. 8000" step="100" min="0">
+  </div>
+  <div class="field">
+    <div class="field-label">
+      <svg viewBox="0 0 24 24"><path d="M6 4v6a6 6 0 0 0 12 0V4"/><line x1="4" y1="20" x2="20" y2="20"/></svg>
+      Overige sport
+    </div>
+    <input type="text" id="field-sport" placeholder="bijv. yoga, zwemmen, fietsen...">
+  </div>
+</div>
+
+<div class="section-label">Cyclus &amp; welzijn</div>
+<div class="card">
+  <div class="field">
+    <div class="field-label">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/></svg>
+      Cyclusfase
+    </div>
+    <select id="field-cycle">
+      <option value="">— kies een fase</option>
+      <option value="Menstruatie">Menstruatie</option>
+      <option value="Folliculaire fase">Folliculaire fase</option>
+      <option value="Ovulatie">Ovulatie</option>
+      <option value="Luteale fase">Luteale fase</option>
+    </select>
+  </div>
+  <div class="field">
+    <div class="field-label">
+      <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Wat ging goed vandaag?
+    </div>
+    <textarea id="field-good" placeholder="bijv. energiek wakker geworden, veel bewogen..." rows="3"></textarea>
+  </div>
+  <div class="field">
+    <div class="field-label">
+      <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+      Eten vandaag
+    </div>
+    <textarea id="field-food" placeholder="Omschrijf wat je gegeten hebt..." rows="4"></textarea>
+  </div>
+</div>
+
+<div class="save-wrap">
+  <button class="save-btn" onclick="saveEntry()">
+    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    Opslaan
+  </button>
+</div>
+
+<!-- History -->
+<div class="section-label" style="margin-top: 10px;">Eerdere check-ins</div>
+<div class="card" style="margin: 0 12px;">
+  <div class="history-toggle" id="history-toggle" onclick="toggleHistory()">
+    <span>Bekijk geschiedenis</span>
+    <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+  </div>
+</div>
+<div class="history-list" id="history-list"></div>
+
+<div class="toast" id="toast">✓ Check-in opgeslagen!</div>
+
+<script>
+  const DAYS_NL = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+  const MONTHS_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+
+  function formatDateNL(dateStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    return `${DAYS_NL[date.getDay()]} ${d} ${MONTHS_NL[m - 1]} ${y}`;
+  }
+
+  function todayStr() {
+    const d = new Date();
+    const yy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yy}-${mm}-${dd}`;
+  }
+
+  function isTuesday(dateStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d).getDay() === 2;
+  }
+
+  let energyVal = null;
+
+  // Init date
+  const dateInput = document.getElementById('field-date');
+  dateInput.value = todayStr();
+  updateHeaderDate();
+  updateWeightVisibility();
+
+  dateInput.addEventListener('change', () => {
+    updateHeaderDate();
+    updateWeightVisibility();
+  });
+
+  function updateHeaderDate() {
+    const v = dateInput.value || todayStr();
+    document.getElementById('header-date').textContent = formatDateNL(v);
+  }
+
+  function updateWeightVisibility() {
+    const v = dateInput.value || todayStr();
+    const wf = document.getElementById('weight-field');
+    if (isTuesday(v)) {
+      wf.classList.remove('disabled');
+    } else {
+      wf.classList.add('disabled');
+      document.getElementById('field-weight').value = '';
+    }
+  }
+
+  // Energy buttons
+  document.getElementById('energy-grid').addEventListener('click', e => {
+    const btn = e.target.closest('.energy-btn');
+    if (!btn) return;
+    energyVal = Number(btn.dataset.val);
+    document.querySelectorAll('.energy-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  });
+
+  // Save
+  function saveEntry() {
+    const date = dateInput.value || todayStr();
+    const entry = {
+      date,
+      energie: energyVal,
+      slaap: document.getElementById('field-sleep').value,
+      gewicht: isTuesday(date) ? document.getElementById('field-weight').value : null,
+      stappen: document.getElementById('field-steps').value,
+      sport: document.getElementById('field-sport').value,
+      cyclus: document.getElementById('field-cycle').value,
+      watGingGoed: document.getElementById('field-good').value,
+      eten: document.getElementById('field-food').value,
+    };
+
+    const stored = JSON.parse(localStorage.getItem('health_checkins') || '[]');
+    const idx = stored.findIndex(e => e.date === date);
+    if (idx >= 0) stored[idx] = entry; else stored.unshift(entry);
+    stored.sort((a, b) => b.date.localeCompare(a.date));
+    localStorage.setItem('health_checkins', JSON.stringify(stored));
+
+    showToast('✓ Check-in opgeslagen!');
+    renderHistory();
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  function deleteEntry(date) {
+    if (!confirm('Check-in verwijderen?')) return;
+    const stored = JSON.parse(localStorage.getItem('health_checkins') || '[]');
+    const updated = stored.filter(e => e.date !== date);
+    localStorage.setItem('health_checkins', JSON.stringify(updated));
+    renderHistory();
+  }
+
+  function toggleHistory() {
+    const toggle = document.getElementById('history-toggle');
+    const list = document.getElementById('history-list');
+    toggle.classList.toggle('open');
+    list.classList.toggle('open');
+    if (list.classList.contains('open')) renderHistory();
+  }
+
+  function renderHistory() {
+    const stored = JSON.parse(localStorage.getItem('health_checkins') || '[]');
+    const list = document.getElementById('history-list');
+    if (!list.classList.contains('open')) return;
+    if (stored.length === 0) {
+      list.innerHTML = '<p style="text-align:center; color: var(--text-hint); font-size:13px; padding: 16px;">Nog geen opgeslagen check-ins.</p>';
+      return;
+    }
+    list.innerHTML = stored.map(e => {
+      const rows = [
+        e.energie != null ? ['Energie', `${e.energie}/10`] : null,
+        e.slaap ? ['Slaap', `${e.slaap} uur`] : null,
+        e.gewicht ? ['Gewicht', `${e.gewicht} kg`] : null,
+        e.stappen ? ['Stappen', Number(e.stappen).toLocaleString('nl-NL')] : null,
+        e.sport ? ['Sport', e.sport] : null,
+        e.cyclus ? ['Cyclus', e.cyclus] : null,
+        e.watGingGoed ? ['Wat ging goed', e.watGingGoed] : null,
+        e.eten ? ['Eten', e.eten] : null,
+      ].filter(Boolean);
+
+      return `<div class="history-item">
+        <div class="history-item-date">${formatDateNL(e.date)}</div>
+        ${rows.map(([k, v]) => `<div class="history-item-row"><span class="history-item-key">${k}</span><span class="history-item-val">${v}</span></div>`).join('')}
+        <button class="history-item-del" onclick="deleteEntry('${e.date}')">Verwijderen</button>
+      </div>`;
+    }).join('');
+  }
+</script>
+</body>
+</html>
